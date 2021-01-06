@@ -90,7 +90,7 @@ import matplotlib.pyplot as plt
 plt.imshow(X[1].view(28,28))
 plt.show()
 # argmax is also returning a list and we want to read its first element
-print(torch.argmax(my_net(X[1].view(-1,784)[0])))
+print(torch.argmax(my_net(X[1].view(-1,28*28)[0])))
 
 
 
