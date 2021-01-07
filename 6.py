@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+import torch.optim as optim
+from tqdm import tqdm
 
 class Network(nn.Module):
     def __init__(self):
@@ -48,15 +50,52 @@ class Network(nn.Module):
         x = self.fc2(x)
         return F.softmax(x, dim=1)
 
-
-
-
 # Loading the labeled data
 training_data = np.load("training_data.npy", allow_pickle=True)
 print(len(training_data))
 
+
 net = Network()
-# net.forward(training_data)
+print(net)
+optimizer = optim.Adam(net.parameters(), lr=0.001)
+loss_function = nn.MSELoss()
+
+# separating out X and y from training_data
+X = torch.Tensor([i[0] for i in training_data]).view(-1, 50, 50)
+# Scaling the imagery. For now the pixel values are b/w 0-255 and
+# these are being rescaled b/w 0 and 1.
+X = X/255.0
+
+for i in training_data:
+    print(i[1])
+    break
+
+y = torch.Tensor([i[1] for i in training_data])
+print(y[0].shape)
+
+# Train-Test split
+split_percentage = 0.1
+test_size = int(len(X)*split_percentage)
+print(test_size)
+
+train_X = X[:-test_size]
+train_y = y[:-test_size]
+test_X = X[-test_size:]
+test_y = y[-test_size:]
+print(len(train_X))
+print(len(test_X))
+
+BATCH_SIZE = 100
+EPOCHS = 1
+
+for epoch in range(EPOCHS):
+    # start at 0, and go upto the size of train_X, step_size will be BATCH_SIZE
+    for i in tqdm(range(0, len(train_X), BATCH_SIZE)):
+        print(i, i+BATCH_SIZE)
+
+
+
+
 
 
 

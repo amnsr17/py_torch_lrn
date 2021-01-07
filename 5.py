@@ -26,26 +26,27 @@ class DogsVsCats():
             print(label)
             for file in tqdm(os.listdir(label)):
                 # some images will refuse to load. for this try-except is being used.
-                try:
-                    # making the full path of the image by joining
-                    image_path = os.path.join(label, file)
-                    # reading the image and gray scaling it
-                    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-                    # resizing
-                    img = cv2.resize(img, (self.IMG_SIZE, self.IMG_SIZE))
-                    # adding this image to the training data along with its class
-                    # class labels are in one-hot vector format
-                    # np.eye(total_num_of_classes)[index_to_make_hot]
-                    # self.LABELS[label] gives the value of the label which is 0 for cat and 1 for dog
-                    self.training_data.append([np.array(img), np.eye(self.LABELS[label])])
+                if "jpg" in file:
+                    try:
+                        # making the full path of the image by joining
+                        image_path = os.path.join(label, file)
+                        # reading the image and gray scaling it
+                        img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+                        # resizing
+                        img = cv2.resize(img, (self.IMG_SIZE, self.IMG_SIZE))
+                        # adding this image to the training data along with its class
+                        # class labels are in one-hot vector format
+                        # np.eye(total_num_of_classes)[index_to_make_hot]
+                        # self.LABELS[label] gives the value of the label which is 0 for cat and 1 for dog
+                        self.training_data.append([np.array(img), np.eye(2) [self.LABELS[label]]])
 
-                    # counter increment
-                    if label==self.CATS:
-                        self.catcount += 1
-                    elif label==self.DOGS:
-                        self.dogcount += 1
-                except Exception as e:
-                    pass
+                        # counter increment
+                        if label==self.CATS:
+                            self.catcount += 1
+                        elif label==self.DOGS:
+                            self.dogcount += 1
+                    except Exception as e:
+                        pass
 
         # Shuffling data after loading and labeling
         np.random.shuffle(self.training_data)
@@ -65,8 +66,9 @@ print("Total Training Examples:",len(training_data))
 # checking
 import matplotlib.pyplot as plt
 plt.imshow(training_data[16000][0], cmap="gray")
-plt.show()
+# plt.show()
 
+print(training_data[16000])
 # Next: Batching, and passing through CNN
 
 
