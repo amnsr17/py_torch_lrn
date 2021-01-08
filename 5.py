@@ -4,14 +4,14 @@ import numpy as np
 from tqdm import tqdm
 
 # to do preprocessing only once we are making a flag
-REBUILD_DATA = False
+REBUILD_DATA = True
 
 class DogsVsCats():
     # desired image size
     IMG_SIZE = 50
     # data paths
-    CATS = "cat_dog_data/Cat"
-    DOGS = "cat_dog_data/Dog"
+    CATS = "PetImages/Cat"
+    DOGS = "PetImages/Dog"
     LABELS = {CATS:0, DOGS:1}
     # labeled data will be populated in this list
     training_data = []
@@ -38,7 +38,8 @@ class DogsVsCats():
                         # class labels are in one-hot vector format
                         # np.eye(total_num_of_classes)[index_to_make_hot]
                         # self.LABELS[label] gives the value of the label which is 0 for cat and 1 for dog
-                        self.training_data.append([np.array(img), np.eye(2) [self.LABELS[label]]])
+                        self.training_data.append([np.array(img), np.eye(2)[self.LABELS[label]]])
+                        # print(np.eye(2)[self.LABELS[label]])
 
                         # counter increment
                         if label==self.CATS:
@@ -47,6 +48,7 @@ class DogsVsCats():
                             self.dogcount += 1
                     except Exception as e:
                         pass
+                        #print(label, f, str(e))
 
         # Shuffling data after loading and labeling
         np.random.shuffle(self.training_data)
@@ -59,6 +61,7 @@ if REBUILD_DATA:
     dogvcats = DogsVsCats()
     dogvcats.make_training_data()
 
+
 # Loading the saved training data
 training_data = np.load("training_data.npy", allow_pickle=True)
 print("Total Training Examples:",len(training_data))
@@ -66,9 +69,9 @@ print("Total Training Examples:",len(training_data))
 # checking
 import matplotlib.pyplot as plt
 plt.imshow(training_data[16000][0], cmap="gray")
-# plt.show()
+plt.show()
 
-print(training_data[16000])
+print(training_data[16000][1])
 # Next: Batching, and passing through CNN
 
 

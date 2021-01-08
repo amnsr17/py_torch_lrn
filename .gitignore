@@ -1,5 +1,5 @@
 .idea/
 *pyc
 MNIST/
-cat_dog_data
+PetImages/
 training_data.npy
