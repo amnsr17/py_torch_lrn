@@ -54,11 +54,23 @@ class Network(nn.Module):
 training_data = np.load("training_data.npy", allow_pickle=True)
 print(len(training_data))
 
+# --- GPU accessing ---
+# Checking
+print("GPU is available:",torch.cuda.is_available())
+print("No of GPUs:",torch.cuda.device_count())
+# making available, we can have multiple GPUs available to us. This is the reason of indexing
+if torch.cuda.is_available():
+    device = torch.device("cuda:0")
+else:
+    device = torch.device("cpu")
 
+# Instantiating the Network
 net = Network()
+# putting the network on the GPU
+net.to(device=device)
+
 print(net)
-optimizer = optim.Adam(net.parameters(), lr=0.001)
-loss_function = nn.MSELoss()
+
 
 # separating out X and y from training_data
 X = torch.Tensor([i[0] for i in training_data]).view(-1, 50, 50)
@@ -80,58 +92,56 @@ test_y = y[-test_size:]
 print(f"Train size: {len(train_X)}")
 print(f"Test size: {len(test_X)}")
 
-BATCH_SIZE = 100
-EPOCHS = 1
-batch_loss = []
 
-for epoch in range(EPOCHS):
-    # start at 0, and go upto the size of train_X, step_size will be BATCH_SIZE
-    for i in tqdm(range(0, len(train_X), BATCH_SIZE)):
-        # print(i, i+BATCH_SIZE)
-        # Making Batch; Reshaping for passing through the network: -1 any batch size, 1: input size, 50: dimension_of_img
-        batch_X = train_X[i:i+BATCH_SIZE].view(-1, 1, 50, 50)
-        batch_y = train_y[i:i+BATCH_SIZE]
-        # Before Fitting, Zero-ing gradients
-        net.zero_grad()
-        # Fitting
-        outputs = net(batch_X)
-        # Loss calculation
-        loss = loss_function(outputs, batch_y)
-        # back propagate this error
-        loss.backward()
-        optimizer.step()
-        # saving loss value per epoch
-        batch_loss.append(loss)
+def train(net, EPOCHS = 3, BATCH_SIZE = 100):
+    optimizer = optim.Adam(net.parameters(), lr=0.001)
+    loss_function = nn.MSELoss()
+    for epoch in range(EPOCHS):
+        # start at 0, and go up to the size of train_X, step_size will be BATCH_SIZE
+        for i in tqdm(range(0, len(train_X), BATCH_SIZE)):
+            # print(i, i+BATCH_SIZE)
+            # Making Batch; Reshaping for passing through the network: -1 any batch size, 1: input size, 50: dimension_of_img
+            batch_X = train_X[i:i+BATCH_SIZE].view(-1, 1, 50, 50).to(device)
+            batch_y = train_y[i:i+BATCH_SIZE].to(device)
+            # Before Fitting, Zero-ing gradients
+            net.zero_grad()
+            # Fitting
+            outputs = net(batch_X)
+            # Loss calculation
+            loss = loss_function(outputs, batch_y)
+            # back propagate this error
+            loss.backward()
+            optimizer.step()
 
-
+        print(f"Epoch: {epoch}. Loss: {loss}")
 
 
-print(loss)
-print(len(batch_loss))
+# Evaluation - Training Accuracy
+def test(net):
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for i in tqdm(range(len(test_X))):
+            # argmax: returns the index of the maximum value in the tensor passed to it
+            # test_y[0] = [1,0] and argmax will return: 0 as at 0 index we have highest value
+            # The class label is one-hot vector such that on 0 index it is hot for CAT and on 1 for dog
+            # and the label for CAT is 0 and for DOG is 1
+            actual_class = torch.argmax(test_y[i]).to(device)
+            # Predict;
+            # returns a list and 0th element of net_out is the prediction tensor
+            net_out = net(test_X[i].view(-1,1,50,50).to(device))[0]
+            # print("Predicted tensor is:",net_out)
 
-# Evaluation - Test Accuracy
-correct = 0
-total = 0
-
-with torch.no_grad():
-    for i in tqdm(range(len(test_X))):
-        # argmax: returns the index of the maximum value in the tensor passed to it
-        # test_y[0] = [1,0] and argmax will return: 0 as at 0 index we have highest value
-        # The class label is one-hot vector such that on 0 index it is hot for CAT and on 1 for dog
-        # and the label for CAT is 0 and for DOG is 1
-        actual_class = torch.argmax(test_y[i])
-        # Predict;
-        # 0th element of net_out is the prediction tensor
-        net_out = net(test_X[i].view(-1,1,50,50))[0]
-        # print("Predicted tensor is:",net_out)
-
-        # Applying argmax on this tensor will give us info that
-        # on which index we have the highest probability value of the class
-        # and the index is corresponding to the class i.e. 0=CAT 1=DOG
-        predicted_class = torch.argmax(net_out)
-        if predicted_class == actual_class:
-            correct += 1
-        total += 1
+            # Applying argmax on this tensor will give us info that
+            # on which index we have the highest probability value of the class
+            # and the index is corresponding to the class i.e. 0=CAT 1=DOG
+            predicted_class = torch.argmax(net_out)
+            if predicted_class == actual_class:
+                correct += 1
+            total += 1
+    return correct, total
 
 
+train(net=net)
+correct, total = test(net=net)
 print(f"Test Accuracy is: {(correct/total)*100}%")
