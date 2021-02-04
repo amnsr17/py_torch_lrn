@@ -142,6 +142,6 @@ def test(net):
     return correct, total
 
 
-train(net=net)
+train(net=net, EPOCHS=60)
 correct, total = test(net=net)
 print(f"Test Accuracy is: {(correct/total)*100}%")
