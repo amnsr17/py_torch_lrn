@@ -94,9 +94,101 @@ print(label_seq)
 
 # 5 ---------------------------------------------
 if torch.cuda.is_available():
-    device = torch.device("cuda:0")
+    device = torch.device("cpu")
 else:
     device = torch.device("cpu")
+
+
+# Model: 1 layer of RNN followed by a fully connected layer.
+# This fully connected layer is responsible for converting the RNN output to our desired output shape.
+# The forward function is executed sequentially, therefore we'll have to pass the inputs and zero-initialized hidden
+# state through the RNN layer first,before passing the RNN outputs to the fully connected layer.
+# init_hidden(): Initializes the hidden state. Creates a tensor of zeros in the shape of our hidden states.
+class RnnModel(nn.Module):
+    def __init__(self, input_size, output_size, hidden_size, n_layers):
+        super(RnnModel, self).__init__()
+        # parameter/data-member defining
+        self.hidden_size = hidden_size
+        self.n_layers = n_layers
+        # layer defining
+        # RNN Layer
+        self.rnn = nn.RNN(input_size, hidden_size, n_layers, batch_first=True)
+        # Fully Connected Layer
+        self.fc = nn.Linear(hidden_size, output_size)
+
+    def forward(self, x):
+        batch_size = x.size(0) # size of input batch along axis=0
+        # initializing the hidden state for first input using init_hidden method defined below
+        hidden = self.init_hidden(batch_size)
+
+        # Input + hidden_state to RNN to generate output
+        out, hidden = self.rnn(x, hidden)
+
+        # Reshaping the output so it can be fit to the fully connected layer
+        # contiguous() -> returns a contiguous tensor. good for performance.
+        # output and labels/targets both should be contiguous for computing the loss
+        # view() cannot be applied to a dis-contiguous tensor
+        out = out.contiguous().view(-1, self.hidden_size)
+        out = self.fc(out)
+
+        return out,hidden
+
+    def init_hidden(self, batch_size):
+        # Generates the first hidden layer of zeros to be used in the forward pass.
+        # the tesor holding the hidden state will be sent to the device specified earlier
+        hidden = torch.zeros(self.n_layers, batch_size, self.hidden_size)
+        return hidden
+
+# Instantiating the Model
+model = RnnModel(input_size=dict_size, output_size=dict_size, hidden_size=12, n_layers=1)
+model.to(device)
+
+# Hyper-parameters
+n_epochs = 100
+lr =0.01
+
+# Loss, optimizer
+criterion = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+
+# 6 ---------------------------------------------
+# Training
+for epoch in range(1, n_epochs+1):
+    optimizer.zero_grad()   # clearing existing gradients from previous epoch
+    input_seq.to(device)
+    output, hidden = model(input_seq.float())
+    loss = criterion(output, label_seq.view(-1).long())
+    loss.backward() # backpropagation gradient calculation
+    optimizer.step() # weights update
+
+    if epoch%10 == 0:
+        print('Epoch: {}/{}...............'.format(epoch, n_epochs), end=' ')
+        print('Loss: {:.4f}'.format(loss.item()))
+
+# 7 ---------------------------------------------
+def predict(model, character):
+    """Takes model and a character, and predicts the next character
+    and returns it along with the hidden state."""
+
+    # one-hot encoding of input character
+    character_2_int = np.array([[char2int[c] for c in character]])
+    one_hot_char = hot_encoder(character_2_int, dict_size, character_2_int.shape[1], 1)
+    one_hot_char = torch.from_numpy(one_hot_char)
+    one_hot_char.to(device)
+
+    out, hidden = model(one_hot_char)
+
+    probability = nn.functional.softmax(out[-1], dim=0).data
+    # Taking the class having highest score from the output
+    char_ind = torch.max(probability, dim=0)[1].item()
+
+    char_ind = int2char[char_ind] # converting from int to character
+
+    return char_ind, hidden
+
+
+
 
 
 
