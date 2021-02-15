@@ -173,7 +173,9 @@ def predict(model, character):
 
     # one-hot encoding of input character
     character_2_int = np.array([[char2int[c] for c in character]])
+    print(character_2_int)
     one_hot_char = hot_encoder(character_2_int, dict_size, character_2_int.shape[1], 1)
+    print(one_hot_char)
     one_hot_char = torch.from_numpy(one_hot_char)
     one_hot_char.to(device)
 
@@ -187,8 +189,25 @@ def predict(model, character):
 
     return char_ind, hidden
 
+def sample(model, out_len, start_txt="hey"):
+    """Takes the desired output length and input characters as input and returns the produced sentence."""
+    model.eval() # evaluation mode of the model
+    start_txt = start_txt.lower()
+    chars = [c for c in start_txt]
+    size = out_len - len(chars) # assuming that output_length is always bigger than input characters
+
+    for i in range(size):
+        predicted_char, h = predict(model, chars[i])
+        chars.append(predicted_char)
+
+    return ''.join(chars)
+
+# generated_txt = sample(model, 15, "good")
+# print(generated_txt)
 
 
-
+model.eval()
+c, h = predict(model, "g")
+print(c)
 
 
