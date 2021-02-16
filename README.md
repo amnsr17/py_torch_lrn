@@ -1,1 +1,2 @@
-# py_torch_lrn
+# DL-PyTorch
+Implementations of Deep Neural Nets using PyTorch.
