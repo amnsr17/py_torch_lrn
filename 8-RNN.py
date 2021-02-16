@@ -157,7 +157,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 for epoch in range(1, n_epochs+1):
     optimizer.zero_grad()   # clearing existing gradients from previous epoch
     input_seq.to(device)
-    output, hidden = model(input_seq.float())
+    output, hidden = model(input_seq.float()) # Error: Expected object of scalar type float but got scalar type Double
     loss = criterion(output, label_seq.view(-1).long())
     loss.backward() # backpropagation gradient calculation
     optimizer.step() # weights update
@@ -167,29 +167,40 @@ for epoch in range(1, n_epochs+1):
         print('Loss: {:.4f}'.format(loss.item()))
 
 # 7 ---------------------------------------------
-def predict(model, character):
-    """Takes model and a character, and predicts the next character
+# Sample takes the string, makes one-hot tensor of each character using one_hotter_char,
+# and passes it to predict for next character prediction
+
+# one-hot for training is not working on the single character. So this one does it separately
+def one_hotter_char(char, batch_size, seq_len, dict_size):
+    """makes a single input character one-hot-encoded and returns a tensor"""
+    onehot_data = np.zeros(shape=(batch_size, seq_len, dict_size))
+    char = char2int[char]
+    print("Integer Encoded Character is: ",char)
+    onehot_data[0][0][char] = 1
+    print("One-hot Character is: ",onehot_data)
+    print(onehot_data.shape)
+    # making it a tensor
+    onehot_data = torch.from_numpy(onehot_data).float() # .float() is required otherwise Error: Expected object of scalar type Double but got scalar type Float
+    onehot_data.to('cpu')
+    print(type(onehot_data))
+    return onehot_data
+
+
+def predict(model, char_tensor):
+    """Takes model and a one-hot encoded tensor of a character, and predicts the next character
     and returns it along with the hidden state."""
 
-    # one-hot encoding of input character
-    character_2_int = np.array([[char2int[c] for c in character]])
-    print(character_2_int)
-    one_hot_char = hot_encoder(character_2_int, dict_size, character_2_int.shape[1], 1)
-    print(one_hot_char)
-    one_hot_char = torch.from_numpy(one_hot_char)
-    one_hot_char.to(device)
-
-    out, hidden = model(one_hot_char)
+    out, hidden = model(char_tensor)
 
     probability = nn.functional.softmax(out[-1], dim=0).data
     # Taking the class having highest score from the output
-    char_ind = torch.max(probability, dim=0)[1].item()
+    char = torch.max(probability, dim=0)[1].item()
+    char = int2char[char] # converting from int to character
 
-    char_ind = int2char[char_ind] # converting from int to character
+    return char, hidden
 
-    return char_ind, hidden
 
-def sample(model, out_len, start_txt="hey"):
+def sample(model, out_len, batch_size, seq_len, dict_size, start_txt="hey"):
     """Takes the desired output length and input characters as input and returns the produced sentence."""
     model.eval() # evaluation mode of the model
     start_txt = start_txt.lower()
@@ -197,17 +208,14 @@ def sample(model, out_len, start_txt="hey"):
     size = out_len - len(chars) # assuming that output_length is always bigger than input characters
 
     for i in range(size):
-        predicted_char, h = predict(model, chars[i])
+        char_tensor = one_hotter_char(chars[i], batch_size, seq_len, dict_size)
+        predicted_char, h = predict(model, char_tensor)
         chars.append(predicted_char)
 
     return ''.join(chars)
 
-# generated_txt = sample(model, 15, "good")
-# print(generated_txt)
 
+one_hotter_char("g", batch_size=1, seq_len=1, dict_size=dict_size)
 
-model.eval()
-c, h = predict(model, "g")
-print(c)
-
-
+generated_txt = sample(model, 15, batch_size=1, seq_len=1, dict_size=dict_size, start_txt="good")
+print(generated_txt)
